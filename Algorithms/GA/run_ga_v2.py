@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from joblib import Parallel, delayed
 from matplotlib.patches import Polygon
+from matplotlib.animation import FuncAnimation, PillowWriter
 
 class GASolveFacilityProblem:
     def __init__(
@@ -52,6 +53,7 @@ class GASolveFacilityProblem:
         self.population = []
         self.costs = []
         self.states = []
+        self.states_full = []
         self.solution = None
         self.solution_cost = None
 
@@ -132,7 +134,7 @@ class GASolveFacilityProblem:
     def mutate(self, pop_element):
         mutated_population_element = []
         for facility in pop_element:
-            sorted_closest_nodes = np.argsort(self.cost_matrix[facility[2]])
+            sorted_closest_nodes = self.ordered_matrix[facility[2]]
             random_index = random.randint(0, self.nodes_len_mutation)
             new_node_index = sorted_closest_nodes[random_index]
             new_x = self.nodes_info[new_node_index][0]
@@ -167,15 +169,23 @@ class GASolveFacilityProblem:
         return total_costs
 
     def init_population(self):
+        first_node = True
         for node in self.nodes_info:
-            if node[0] > self.max_x:
+            if first_node:
                 self.max_x = node[0]
-            if node[0] < self.min_x:
                 self.min_x = node[0]
-            if node[1] > self.max_y:
                 self.max_y = node[1]
-            if node[1] < self.min_y:
                 self.min_y = node[1]
+                first_node = False
+            else:
+                if node[0] > self.max_x:
+                    self.max_x = node[0]
+                if node[0] < self.min_x:
+                    self.min_x = node[0]
+                if node[1] > self.max_y:
+                    self.max_y = node[1]
+                if node[1] < self.min_y:
+                    self.min_y = node[1]
         
         self.x_resolution = (self.max_x - self.min_x) / len(self.nodes_info)
         self.y_resolution = (self.max_y - self.min_y) / len(self.nodes_info)
@@ -214,6 +224,7 @@ class GASolveFacilityProblem:
             print("Iteration ", str(iter))
             self.costs = self.fitness_all(self.population)
             self.states.append(min(self.costs))
+            self.states_full.append(min(self.population, key=lambda x: self.costs[self.population.index(x)]))
 
             parents = nsmallest(self.num_parents,self.population, key=lambda x: self.costs[self.population.index(x)])
 
@@ -237,8 +248,9 @@ class GASolveFacilityProblem:
         
         # Show best solution
         self.costs = self.fitness_all(self.population)
-        self.states.append(min(self.costs))
         self.solution = min(self.population, key=lambda x: self.costs[self.population.index(x)])
+        self.states.append(min(self.costs))
+        self.states_full.append(self.solution)
         print("Minimum: ", min(self.population, key=lambda x: self.costs[self.population.index(x)]))
         self.solution_cost = self.costs[self.population.index(self.solution)]
         print("Best Solution:", self.solution)
@@ -260,6 +272,8 @@ class GASolveFacilityProblem:
         plt.ylabel("Y Coordinate of Node", fontsize=med)  
         plt.xlabel("X Coordinate of Node", fontsize=med) 
         plt.title("Calculated Facilities Map - w/Clustered Nodes", fontsize=large)
+        plt.xlim((self.min_x, self.max_x))
+        plt.ylim((self.min_y, self.max_y))
 
         nodes_per_facility = self.calculate_closest_nodes(self.solution)
         color = ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)]) for i in range(len(nodes_per_facility))]
@@ -304,6 +318,44 @@ class GASolveFacilityProblem:
         plt.plot(self.states)
         plt.savefig("solution_progression.svg", format="svg")
         plt.show()
+
+        plt.cla()
+        large = 32; med = 28; small = 24
+        params = {'axes.titlesize': large,
+                    'legend.fontsize': large,
+                    'figure.figsize': (16, 10),
+                    'axes.labelsize': med,
+                    'axes.titlesize': med,
+                    'xtick.labelsize': med,
+                    'ytick.labelsize': med,
+                    'figure.titlesize': large}
+        plt.rcParams.update(params)
+
+        plt.figure(figsize=(16,8), dpi= 80)
+        plt.ylabel("Y Coordinate of Node", fontsize=med)  
+        plt.xlabel("X Coordinate of Node", fontsize=med) 
+        plt.title("Progression of Facility Locations Over Time", fontsize=large)
+
+        writer = PillowWriter(fps=5)
+        fig2 = plt.figure()
+        plt.xlim((self.min_x, self.max_x))
+        plt.ylim((self.min_y, self.max_y))
+        animation_points = []
+        with writer.saving(fig2, "facility_locations_progression.gif", 100):
+            for i in range(0, len(self.states_full)):
+                x_coordinates = []
+                y_coordinates = []
+                for facility in self.states_full[i]:
+                    x_coordinates.append(facility[0])
+                    y_coordinates.append(facility[1])
+                writer.grab_frame()
+                animation_points.append(plt.scatter(x_coordinates, y_coordinates, color="#FF0000"))
+                if len(animation_points) == 2:
+                    animation_points[0].remove()
+                    animation_points.pop(0)
+                plt.show(block=False)
+
+
 
 
 
@@ -354,8 +406,8 @@ num_iterations = 100
 num_parents = 4
 mutation_prob = 0.6
 crossover_prob = 0.7
-facility_increase_prob = 0.5
-facility_decrease_prob = 0.5
+facility_increase_prob = 0.2
+facility_decrease_prob = 0.4
 len_mutation_nodes_div = 10
 
 # main function of the program
