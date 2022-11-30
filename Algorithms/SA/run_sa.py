@@ -237,8 +237,8 @@ class SASolveFacilityProblem:
             x_coordinates.append(facility[0])
             y_coordinates.append(facility[1])
         plt.scatter(x_coordinates, y_coordinates, color="#FF0000")
-        plt.savefig("sa_solution.svg", format="svg")
-        plt.show()
+        plt.savefig("k" + str(self.k) + "_lam" + str(self.lam) + "_" + "sa_solution.svg", format="svg")
+        #plt.show(block=False)
 
         plt.cla()
         large = 32; med = 28; small = 24
@@ -257,8 +257,8 @@ class SASolveFacilityProblem:
         plt.xlabel("# Iteration", fontsize=med) 
         plt.title("Cost of Best Solution Through The Iterations", fontsize=large)
         plt.plot(self.states)
-        plt.savefig("sa_solution_progression.svg", format="svg")
-        plt.show()
+        plt.savefig("k" + str(self.k) + "_lam" + str(self.lam) + "_" + "sa_solution_progression.svg", format="svg")
+        #plt.show(block=False)
 
         plt.cla()
 
@@ -281,7 +281,7 @@ class SASolveFacilityProblem:
         plt.xlim((self.min_x, self.max_x))
         plt.ylim((self.min_y, self.max_y))
         animation_points = []
-        with writer.saving(fig2, "sa_facility_locations_progression.gif", 100):
+        with writer.saving(fig2, "k" + str(self.k) + "_lam" + str(self.lam) + "_" + "sa_facility_locations_progression.gif", 100):
             for i in range(0, len(self.states_full)):
                 x_coordinates = []
                 y_coordinates = []
@@ -293,7 +293,17 @@ class SASolveFacilityProblem:
                 if len(animation_points) == 2:
                     animation_points[0].remove()
                     animation_points.pop(0)
-                plt.show(block=False)
+                #plt.show(block=False)
+
+    def write_results_to_csv(self):
+        print("Saving solution progression to .csv file...")
+        save_path = Path("k" + str(self.k) + "_lam" + str(self.lam) + "_sa.csv")
+        with open(save_path, mode='w', encoding='utf-8') as solutionwriter:
+            csvsolutionwriter = csv.writer(solutionwriter, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csvsolutionwriter.writerow(["cost"])
+            for state in self.states:
+                csvsolutionwriter.writerow([state])
+                
 
 # loads the synthetic dataset from a .csv file
 # the synthetic dataset must have the following columns:
@@ -341,28 +351,43 @@ num_iterations = 100
 facility_increase_prob = 0.2
 facility_decrease_prob = 0.4
 num_neighbours_nodes_div = 10
-exp_schedule_k = 100
-exp_schedule_lam = 0.005
+exp_schedule_k = 1
+exp_schedule_lam = 0.001
 
 # main function of the program
 def main():
     dataset = load_dataset("../../DatasetGen/synthetic_dataset.csv")
     total_deliveries, prepared_dataset = prepare_dataset(dataset)
-    solver = SASolveFacilityProblem(
-        prepared_dataset,
-        total_deliveries, 
-        facility_capacity, 
-        facility_cost, 
-        facility_increase_prob, 
-        facility_decrease_prob, 
-        len(prepared_dataset) // num_neighbours_nodes_div,
-        num_iterations,
-        exp_schedule_k,
-        exp_schedule_lam
-    )
-    solver.initialize()
-    solver.solve()
-    solver.visualize_solution()
+    k_to_try = [1, 10, 20, 50, 70, 100, 200]
+    lam_to_try = [0.001, 0.002, 0.005, 0.01, 0.05, 0.1, 0.5, 1]
+    best_solution_cost = float("inf")
+    best_k = k_to_try[0]
+    best_lam = lam_to_try[0]
+    for exp_k in k_to_try:
+        for exp_lam in lam_to_try:
+            print("Trying " + str(exp_k) + "for K value, " + str(exp_lam) + " for lambda value")
+            solver = SASolveFacilityProblem(
+                prepared_dataset,
+                total_deliveries, 
+                facility_capacity, 
+                facility_cost, 
+                facility_increase_prob, 
+                facility_decrease_prob, 
+                len(prepared_dataset) // num_neighbours_nodes_div,
+                num_iterations,
+                exp_k,
+                exp_lam
+            )
+            solver.initialize()
+            solver.solve()
+            solver.visualize_solution()
+            solver.write_results_to_csv()
+            if solver.solution_cost < best_solution_cost:
+                best_k = exp_k
+                best_lam = exp_lam
+                best_solution_cost = solver.solution_cost
+    print("Best K value found: " + str(best_k))
+    print("Best lambda value found: " + str(best_lam))
     return 0
 
 if __name__ == '__main__':
