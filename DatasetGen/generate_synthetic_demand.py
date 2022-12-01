@@ -18,7 +18,7 @@ def lat_lon_to_global_x_y(lat, lon):
 
 # read shop locations and information
 shops_info = []
-with open(Path("shop_locations.csv"), mode='r', encoding='utf-8') as shop_locations_file:
+with open(Path("/Users/yilunli/Desktop/ECE1724_Team10_Project/DatasetGen/shop_locations.csv"), mode='r', encoding='utf-8') as shop_locations_file:
     csvshopreader = csv.reader(shop_locations_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     line_number = 0
     for row in csvshopreader:
@@ -34,7 +34,7 @@ with open(Path("shop_locations.csv"), mode='r', encoding='utf-8') as shop_locati
 
 # read road and walkable network nodes and their population/population density
 population_info = []
-with open(Path("per_node_population_density.csv"), mode='r', encoding='utf-8') as population_density_file:
+with open(Path("/Users/yilunli/Desktop/ECE1724_Team10_Project/DatasetGen/per_node_population_density.csv"), mode='r', encoding='utf-8') as population_density_file:
     csvpopulationreader = csv.reader(population_density_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     line_number = 0
     for row in csvpopulationreader:
