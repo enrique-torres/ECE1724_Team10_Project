@@ -10,6 +10,11 @@ from matplotlib.colors import LinearSegmentedColormap
 ESTIMATED_CENTER_LAT = 43.690660
 ESTIMATED_CENTER_LON = -79.395199
 EARTH_RADIUS = 6371 #km
+
+DOWNTOWN_LAT = 43.654913 
+DOWNTOWN_LON = -79.388172
+
+
 def lat_lon_to_global_x_y(lat, lon):
     # convert lat and lon coordinates to global X and Y in kilometers
     x = EARTH_RADIUS * math.cos(lat) * math.cos(lon)
@@ -18,7 +23,7 @@ def lat_lon_to_global_x_y(lat, lon):
 
 # read shop locations and information
 shops_info = []
-with open(Path("/Users/yilunli/Desktop/ECE1724_Team10_Project/DatasetGen/shop_locations.csv"), mode='r', encoding='utf-8') as shop_locations_file:
+with open(Path("shop_locations.csv"), mode='r', encoding='utf-8') as shop_locations_file:
     csvshopreader = csv.reader(shop_locations_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     line_number = 0
     for row in csvshopreader:
@@ -34,7 +39,7 @@ with open(Path("/Users/yilunli/Desktop/ECE1724_Team10_Project/DatasetGen/shop_lo
 
 # read road and walkable network nodes and their population/population density
 population_info = []
-with open(Path("/Users/yilunli/Desktop/ECE1724_Team10_Project/DatasetGen/per_node_population_density.csv"), mode='r', encoding='utf-8') as population_density_file:
+with open(Path("per_node_population_density.csv"), mode='r', encoding='utf-8') as population_density_file:
     csvpopulationreader = csv.reader(population_density_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     line_number = 0
     for row in csvpopulationreader:
@@ -131,7 +136,7 @@ for node in population_node_shop_weighted:
     node_shop_weight = node[6]
     node_weight = POPULATION_DENSITY_HYPERPARAMETER * node_popdensity + SHOP_DENSITY_HYPERPARAMETER * node_shop_weight
     total_weight += node_weight
-    weighted_nodes.append([node_id, node_osmid, node_x, node_y, node_weight, 0]) # last element is the number of deliveries this node will have
+    weighted_nodes.append([node_id, node_osmid, -node_x, -node_y, node_weight, 0]) # last element is the number of deliveries this node will have
 
 # now let's calculate, based on each node's weight, the probability of creating a delivery for that node
 node_probability_distribution = []
@@ -183,6 +188,9 @@ max_deliveries = max(num_deliveries)
 print("Max allocated number of deliveries to a node: " + str(max_deliveries))
 min_deliveries = min(num_deliveries)
 print("Min allocated number of deliveries to a node: " + str(min_deliveries))
+
+downtown_x, downtown_y = lat_lon_to_global_x_y(DOWNTOWN_LAT, DOWNTOWN_LON)
+print("Downtown X,Y coordinates: " + str(-downtown_x) + "," + str(-downtown_y))
 
 # generate a graph to visually show the different nodes and the amount of deliveries they have
 blue_red_colormap = LinearSegmentedColormap.from_list('BlueRed', ['b', 'r'])

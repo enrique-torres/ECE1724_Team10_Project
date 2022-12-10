@@ -34,7 +34,14 @@ class GASolveFacilityProblem:
         self.facility_capacity = facility_capacity
         self.cost_matrix = None
         self.ordered_matrix = None
+        self.distance_from_downtown_matrix = None
         self.nodes_len_mutation = len_nodes_mutation # the number of closest nodes to be considered for the mutation
+
+        self.estimated_dtwn_x = 3988.871628130853
+        self.estimated_dtwn_y = -4525.6328839352145
+        self.max_distance_to_dtwn = 0
+        self.min_distance_to_dtwn = 0
+        self.min_bid_rent_multiplier = 0.5
 
         self.pop_size = population_size
         self.iterations = num_iterations
@@ -96,8 +103,9 @@ class GASolveFacilityProblem:
     def calculate_facility_cost(self, facility_closest_nodes):
         total_cost = 0
         for node in facility_closest_nodes:
-            total_cost += node[1] # add the distance from node to facility and back, which is already squared
-        return total_cost + self.facility_cost
+            total_cost += node[1] * self.nodes_info[node[0]][2]  # add the distance from node to facility and back, which is already squared, times the demand for that node
+        return total_cost
+        #return total_cost / len(facility_closest_nodes) + self.facility_cost
 
     def gen_random_solution(self):
         gen_facilities = []
@@ -155,17 +163,30 @@ class GASolveFacilityProblem:
 
         return mutated_population_element
 
+    def facility_placement_cost(self, facility_id):
+        distance_to_downtown = self.distance_from_downtown_matrix[facility_id]
+        bid_rent_multiplier = 1 - self.min_bid_rent_multiplier * (distance_to_downtown - self.min_distance_to_dtwn) / (self.max_distance_to_dtwn - self.min_distance_to_dtwn)
+        return bid_rent_multiplier
+
     def fitness_one(self, solution):
         total_cost = 0
         facilities_closest_nodes = self.calculate_closest_nodes(solution)
-        for closest_nodes in facilities_closest_nodes:
-            total_cost += self.calculate_facility_cost(closest_nodes)
+        for i, closest_nodes in enumerate(facilities_closest_nodes):
+            try:
+                cost = self.calculate_facility_cost(closest_nodes)
+                bid_rent_multiplier = self.facility_placement_cost(self.solution[i][2])
+                total_cost += cost * bid_rent_multiplier
+            except Exception as ex:
+                print(ex)
+                print(self.solution)
+                print(self.solution[i])
+                print(self.solution[i][2])
+                exit(1)
         total_cost = total_cost * (len(solution) ** 2) # heavily penalize the number of facilities to minimize them
         return total_cost
 
     def fitness_all(self, population):
         total_costs = Parallel(n_jobs=8)(delayed(self.fitness_one)(population[i]) for i in range(len(population)))
-        #total_costs = [self.fitness_one(population[i]) for i in range(len(population))]
         return total_costs
 
     def init_population(self):
@@ -205,6 +226,16 @@ class GASolveFacilityProblem:
             temp_ordered_matrix.append(node_i_ordered_indexes.tolist())
         self.ordered_matrix = np.array(temp_ordered_matrix)
         print("Initialized the ordered index closest nodes matrix")   
+
+        print("Initializing the distance to downtown matrix...")
+        self.distance_from_downtown_matrix = np.zeros(len(self.nodes_info))
+        for i, node_i in enumerate(self.nodes_info):
+            x_dist = self.estimated_dtwn_x - node_i[0]
+            y_dist = self.estimated_dtwn_y - node_i[1]
+            self.distance_from_downtown_matrix[i] = x_dist * x_dist + y_dist * y_dist
+        self.max_distance_to_dtwn = np.max(self.distance_from_downtown_matrix)
+        self.min_distance_to_dtwn = np.min(self.distance_from_downtown_matrix)
+        print("Initialized the distance to downtown matrix")
 
         for _ in range(0, self.pop_size):
             self.population.append(self.gen_random_solution())
@@ -296,8 +327,8 @@ class GASolveFacilityProblem:
             x_coordinates.append(facility[0])
             y_coordinates.append(facility[1])
         plt.scatter(x_coordinates, y_coordinates, color="#FF0000")
-        plt.savefig("solution.svg", format="svg")
-        plt.show()
+        plt.savefig("mut" + str(self.mutation_prob) + "_covr" + str(self.crossover_prob) + "ga_solution.svg", format="svg")
+        #plt.show(block=False)
 
         plt.cla()
         large = 32; med = 28; small = 24
@@ -316,10 +347,12 @@ class GASolveFacilityProblem:
         plt.xlabel("# Iteration", fontsize=med) 
         plt.title("Cost of Best Solution Through The Iterations", fontsize=large)
         plt.plot(self.states)
-        plt.savefig("solution_progression.svg", format="svg")
-        plt.show()
+        plt.savefig("mut" + str(self.mutation_prob) + "_covr" + str(self.crossover_prob) + "ga_solution_progression.svg", format="svg")
+        #plt.show(block=False)
 
         plt.cla()
+
+        writer = PillowWriter(fps=5)
         large = 32; med = 28; small = 24
         params = {'axes.titlesize': large,
                     'legend.fontsize': large,
@@ -331,17 +364,14 @@ class GASolveFacilityProblem:
                     'figure.titlesize': large}
         plt.rcParams.update(params)
 
-        plt.figure(figsize=(16,8), dpi= 80)
+        fig2 = plt.figure(figsize=(16,8), dpi= 80)
         plt.ylabel("Y Coordinate of Node", fontsize=med)  
         plt.xlabel("X Coordinate of Node", fontsize=med) 
         plt.title("Progression of Facility Locations Over Time", fontsize=large)
-
-        writer = PillowWriter(fps=5)
-        fig2 = plt.figure()
         plt.xlim((self.min_x, self.max_x))
         plt.ylim((self.min_y, self.max_y))
         animation_points = []
-        with writer.saving(fig2, "facility_locations_progression.gif", 100):
+        with writer.saving(fig2, "mut" + str(self.mutation_prob) + "_covr" + str(self.crossover_prob) + "ga_facility_locations_progression.gif", 100):
             for i in range(0, len(self.states_full)):
                 x_coordinates = []
                 y_coordinates = []
@@ -353,7 +383,16 @@ class GASolveFacilityProblem:
                 if len(animation_points) == 2:
                     animation_points[0].remove()
                     animation_points.pop(0)
-                plt.show(block=False)
+                #plt.show(block=False)
+
+    def write_results_to_csv(self):
+        print("Saving solution progression to .csv file...")
+        save_path = Path("mut" + str(self.mutation_prob) + "_covr" + str(self.crossover_prob) + "_ga.csv")
+        with open(save_path, mode='w', encoding='utf-8') as solutionwriter:
+            csvsolutionwriter = csv.writer(solutionwriter, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csvsolutionwriter.writerow(["cost"])
+            for state in self.states:
+                csvsolutionwriter.writerow([state])
 
 
 
@@ -404,10 +443,10 @@ facility_cost = 5000
 population_size = 8
 num_iterations = 100
 num_parents = 4
-mutation_prob = 0.6
-crossover_prob = 0.7
-facility_increase_prob = 0.2
-facility_decrease_prob = 0.4
+mutation_prob = 0.5
+crossover_prob = 0.5
+facility_increase_prob = 0.7
+facility_decrease_prob = 0.7
 len_mutation_nodes_div = 10
 
 # main function of the program
