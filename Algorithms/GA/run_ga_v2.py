@@ -232,6 +232,9 @@ class GASolveFacilityProblem:
             self.distance_from_downtown_matrix[i] = x_dist * x_dist + y_dist * y_dist
         self.max_distance_to_dtwn = np.max(self.distance_from_downtown_matrix)
         self.min_distance_to_dtwn = np.min(self.distance_from_downtown_matrix)
+        # print(self.max_distance_to_dtwn)
+        # print(self.min_distance_to_dtwn)
+        # exit()
         print("Initialized the distance to downtown matrix")
 
         for _ in range(0, self.pop_size):
