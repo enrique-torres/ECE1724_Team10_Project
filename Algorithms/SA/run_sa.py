@@ -37,11 +37,11 @@ class SASolveFacilityProblem:
         self.ordered_matrix = None
         self.distance_from_downtown_matrix = None
 
-        self.estimated_dtwn_x = -13.599036766192057
-        self.estimated_dtwn_y = 80.27642386699426
+        self.estimated_dtwn_x = -3.7178296565262885e-14
+        self.estimated_dtwn_y = -2.6310964646970894e-13
         self.max_distance_to_dtwn = 0
         self.min_distance_to_dtwn = 0
-        self.min_bid_rent_multiplier = 0.7
+        self.min_bid_rent_multiplier = 0.3
 
         self.overdemand_penalty = 100
 
@@ -267,6 +267,7 @@ class SASolveFacilityProblem:
             x_coordinates.append(facility[0])
             y_coordinates.append(facility[1])
         plt.scatter(x_coordinates, y_coordinates, color="#FF0000")
+        plt.scatter([self.estimated_dtwn_x], [self.estimated_dtwn_y], color="#00FF00")
         plt.savefig("k" + str(self.k) + "_lam" + str(self.lam) + "_" + "sa_solution.svg", format="svg")
         #plt.show(block=False)
 

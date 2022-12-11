@@ -5,7 +5,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-
+import utm
 
 ESTIMATED_CENTER_LAT = 43.690660
 ESTIMATED_CENTER_LON = -79.395199
@@ -58,10 +58,21 @@ print("Read data files!")
 print("Found " + str(len(shops_info)) + " shop data")
 print("Found " + str(len(population_info)) + " population node data")
 
+# calculate center of map
+sum_lat = 0
+sum_lon = 0
+for population in population_info:
+    population_lat = population[2]
+    population_lon = population[3]
+    sum_lat += population_lat
+    sum_lon += population_lon
+map_center_lat = sum_lat / len(population_info)
+map_center_lon = sum_lon / len(population_info)
+
 # convert latitudes and longitudes to global X and Y coordinates, then convert to cartesian 
 # coordinates based on known center of bounding box being used. All for ease of use with facility
 # placement optimization algorithms
-map_center_x, map_center_y = lat_lon_to_global_x_y(ESTIMATED_CENTER_LAT, ESTIMATED_CENTER_LON)
+map_center_x, map_center_y = lat_lon_to_global_x_y(map_center_lat, map_center_lon)
 
 shop_info_x_y = []
 for shop_info in shops_info:
@@ -75,17 +86,17 @@ for shop_info in shops_info:
     shop_info_x_y.append(shop_info)
 
 population_info_x_y = []
-for population_info in population_info:
-    population_lat = population_info[2]
-    population_lon = population_info[3]
+for population in population_info:
+    population_lat = population[2]
+    population_lon = population[3]
     population_x, population_y = lat_lon_to_global_x_y(population_lat, population_lon)
     cartesian_x = population_x - map_center_x
     cartesian_y = population_y - map_center_y
-    population_info[2] = cartesian_x
-    population_info[3] = cartesian_y
-    population_info_x_y.append(population_info)
+    population[2] = cartesian_x
+    population[3] = cartesian_y
+    population_info_x_y.append(population)
 
-print("Converted latitude and longitude coordinates to global X, Y coordinates and adjusted them based on a centroi value to cartesian coordinates")
+print("Converted latitude and longitude coordinates to global X, Y coordinates and adjusted them based on a centroid value to cartesian coordinates")
 
 # now that we have shops and population density nodes in cartesian coordinates, we can start 
 # computing a synthetic demand weight to generate synthetic demand based on a probabilistic generation function
@@ -147,6 +158,16 @@ for node in weighted_nodes:
     weighted_nodes[node_index][4] = node[4] / total_weight
     node_index += 1
 
+# calculate weighted center of map
+sum_x = 0
+sum_y = 0
+for node in weighted_nodes:
+    sum_x += (node[2]) * (node[4] / total_weight)
+    sum_y += (node[3]) * (node[4] / total_weight)
+cartesian_dtwn_x = sum_x / len(weighted_nodes)
+cartesian_dtwn_y = sum_y / len(weighted_nodes)
+
+
 # convert the probabilities to a numpy array and probabilistically distribute N deliveries between all the nodes
 NUMBER_OF_DELIVERIES = 1000000
 prob_distribution = np.array(node_probability_distribution)
@@ -190,13 +211,8 @@ print("Max allocated number of deliveries to a node: " + str(max_deliveries))
 min_deliveries = min(num_deliveries)
 print("Min allocated number of deliveries to a node: " + str(min_deliveries))
 
-downtown_x, downtown_y = lat_lon_to_global_x_y(DOWNTOWN_LAT, DOWNTOWN_LON)
-print(map_center_x, map_center_y)
-print(downtown_x, downtown_y)
-cartesian_dtwn_x = downtown_x - map_center_x
-cartesian_dtwn_y = downtown_y - map_center_y
 #print("Downtown X,Y coordinates: " + str(cartesian_dtwn_x) + "," + str(cartesian_dtwn_y))
-print("Downtown X,Y coordinates: " + str(-cartesian_dtwn_x) + "," + str(-cartesian_dtwn_y))
+print("Downtown X,Y coordinates: " + str(cartesian_dtwn_x) + "," + str(cartesian_dtwn_y))
 
 # generate a graph to visually show the different nodes and the amount of deliveries they have
 blue_red_colormap = LinearSegmentedColormap.from_list('BlueRed', ['b', 'r'])

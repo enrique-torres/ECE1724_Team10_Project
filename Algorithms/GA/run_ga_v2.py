@@ -37,11 +37,11 @@ class GASolveFacilityProblem:
         self.distance_from_downtown_matrix = None
         self.nodes_len_mutation = len_nodes_mutation # the number of closest nodes to be considered for the mutation
 
-        self.estimated_dtwn_x = -13.599036766192057
-        self.estimated_dtwn_y = 80.27642386699426
+        self.estimated_dtwn_x = -3.7178296565262885e-14
+        self.estimated_dtwn_y = -2.6310964646970894e-13
         self.max_distance_to_dtwn = 0
         self.min_distance_to_dtwn = 0
-        self.min_bid_rent_multiplier = 0.7
+        self.min_bid_rent_multiplier = 0.3
 
         self.overdemand_penalty = 100
 
@@ -453,10 +453,10 @@ population_size = 8
 num_iterations = 100
 num_parents = 4
 mutation_prob = 0.9
-crossover_prob = 0.8
-facility_increase_prob = 0.7
+crossover_prob = 0.9
+facility_increase_prob = 0.5
 facility_decrease_prob = 0.7
-len_mutation_nodes_div = 10
+len_mutation_nodes_div = 20
 
 # main function of the program
 def main():
