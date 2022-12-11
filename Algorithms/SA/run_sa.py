@@ -35,6 +35,15 @@ class SASolveFacilityProblem:
         self.min_facilities = math.ceil(self.total_deliveries / float(facility_capacity)) # there have to be at least CAP / NUM_DELIVERIES facilities to serve demand
         self.cost_matrix = None
         self.ordered_matrix = None
+        self.distance_from_downtown_matrix = None
+
+        self.estimated_dtwn_x = -13.599036766192057
+        self.estimated_dtwn_y = 80.27642386699426
+        self.max_distance_to_dtwn = 0
+        self.min_distance_to_dtwn = 0
+        self.min_bid_rent_multiplier = 0.7
+
+        self.overdemand_penalty = 100
 
         self.min_x = 0
         self.max_x = 0
@@ -87,16 +96,25 @@ class SASolveFacilityProblem:
 
     def calculate_facility_cost(self, facility_closest_nodes):
         total_cost = 0
+        total_demand = 0
         for node in facility_closest_nodes:
             total_cost += node[1] * self.nodes_info[node[0]][2]  # add the distance from node to facility and back, which is already squared, times the demand for that node
-        return total_cost + self.facility_cost
+            total_demand += self.nodes_info[node[0]][2]
+        return total_cost if total_demand <= self.facility_capacity else total_cost * self.overdemand_penalty
         #return total_cost / len(facility_closest_nodes) + self.facility_cost
+
+    def facility_placement_cost(self, facility_id):
+        distance_to_downtown = self.distance_from_downtown_matrix[facility_id]
+        bid_rent_multiplier = 1 - self.min_bid_rent_multiplier * (distance_to_downtown - self.min_distance_to_dtwn) / (self.max_distance_to_dtwn - self.min_distance_to_dtwn)
+        return bid_rent_multiplier
 
     def cost_function(self, solution):
         total_cost = 0
         facilities_closest_nodes = self.calculate_closest_nodes(solution)
-        for closest_nodes in facilities_closest_nodes:
-            total_cost += self.calculate_facility_cost(closest_nodes)
+        for i, closest_nodes in enumerate(facilities_closest_nodes):
+            cost = self.calculate_facility_cost(closest_nodes)
+            bid_rent_multiplier = self.facility_placement_cost(solution[i][2])
+            total_cost += cost * bid_rent_multiplier
         total_cost = total_cost * (len(solution) ** 2) # heavily penalize the number of facilities to minimize them
         return total_cost
 
@@ -172,10 +190,22 @@ class SASolveFacilityProblem:
             temp_ordered_matrix.append(node_i_ordered_indexes.tolist())
         self.ordered_matrix = np.array(temp_ordered_matrix)
         print("Initialized the ordered index closest nodes matrix")
+
+        print("Initializing the distance to downtown matrix...")
+        self.distance_from_downtown_matrix = np.zeros(len(self.nodes_info))
+        for i, node_i in enumerate(self.nodes_info):
+            x_dist = self.estimated_dtwn_x - node_i[0]
+            y_dist = self.estimated_dtwn_y - node_i[1]
+            self.distance_from_downtown_matrix[i] = x_dist * x_dist + y_dist * y_dist
+        self.max_distance_to_dtwn = np.max(self.distance_from_downtown_matrix)
+        self.min_distance_to_dtwn = np.min(self.distance_from_downtown_matrix)
+        print("Initialized the distance to downtown matrix")
+
         print("Generating initial solution...")
         self.solution = self.gen_random_solution()
         self.solution_cost = self.cost_function(self.solution)
         print("Initial solution generated! Solution cost is " + str(self.solution_cost))
+        
 
     def solve(self):
         self.states.append(self.solution_cost)
@@ -295,14 +325,23 @@ class SASolveFacilityProblem:
                     animation_points.pop(0)
                 #plt.show(block=False)
 
-    def write_results_to_csv(self):
+    def write_costs_overtime_to_csv(self):
         print("Saving solution progression to .csv file...")
-        save_path = Path("k" + str(self.k) + "_lam" + str(self.lam) + "_sa.csv")
+        save_path = Path("k" + str(self.k) + "_lam" + str(self.lam) + "_sa_progression.csv")
         with open(save_path, mode='w', encoding='utf-8') as solutionwriter:
             csvsolutionwriter = csv.writer(solutionwriter, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             csvsolutionwriter.writerow(["cost"])
             for state in self.states:
                 csvsolutionwriter.writerow([state])
+
+    def write_facility_placements_to_csv(self):
+        print("Saving final facility placements to .csv file...")
+        save_path = Path("k" + str(self.k) + "_lam" + str(self.lam) + "_sa_locations.csv")
+        with open(save_path, mode='w', encoding='utf-8') as solutionwriter:
+            csvsolutionwriter = csv.writer(solutionwriter, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csvsolutionwriter.writerow(["node_id", "x", "y"])
+            for facility in self.solution:
+                csvsolutionwriter.writerow([facility[2], facility[0], facility[1]])
                 
 
 # loads the synthetic dataset from a .csv file
@@ -363,31 +402,52 @@ def main():
     best_solution_cost = float("inf")
     best_k = k_to_try[0]
     best_lam = lam_to_try[0]
-    for exp_k in k_to_try:
-        for exp_lam in lam_to_try:
-            print("Trying " + str(exp_k) + "for K value, " + str(exp_lam) + " for lambda value")
-            solver = SASolveFacilityProblem(
-                prepared_dataset,
-                total_deliveries, 
-                facility_capacity, 
-                facility_cost, 
-                facility_increase_prob, 
-                facility_decrease_prob, 
-                len(prepared_dataset) // num_neighbours_nodes_div,
-                num_iterations,
-                exp_k,
-                exp_lam
-            )
-            solver.initialize()
-            solver.solve()
-            solver.visualize_solution()
-            solver.write_results_to_csv()
-            if solver.solution_cost < best_solution_cost:
-                best_k = exp_k
-                best_lam = exp_lam
-                best_solution_cost = solver.solution_cost
-    print("Best K value found: " + str(best_k))
-    print("Best lambda value found: " + str(best_lam))
+    do_ablation = False
+    if do_ablation:
+        for exp_k in k_to_try:
+            for exp_lam in lam_to_try:
+                print("Trying " + str(exp_k) + "for K value, " + str(exp_lam) + " for lambda value")
+                solver = SASolveFacilityProblem(
+                    prepared_dataset,
+                    total_deliveries, 
+                    facility_capacity, 
+                    facility_cost, 
+                    facility_increase_prob, 
+                    facility_decrease_prob, 
+                    len(prepared_dataset) // num_neighbours_nodes_div,
+                    num_iterations,
+                    exp_k,
+                    exp_lam
+                )
+                solver.initialize()
+                solver.solve()
+                solver.visualize_solution()
+                solver.write_costs_overtime_to_csv()
+                solver.write_facility_placements_to_csv()
+                if solver.solution_cost < best_solution_cost:
+                    best_k = exp_k
+                    best_lam = exp_lam
+                    best_solution_cost = solver.solution_cost
+        print("Best K value found: " + str(best_k))
+        print("Best lambda value found: " + str(best_lam))
+    else:
+        solver = SASolveFacilityProblem(
+            prepared_dataset,
+            total_deliveries, 
+            facility_capacity, 
+            facility_cost, 
+            facility_increase_prob, 
+            facility_decrease_prob, 
+            len(prepared_dataset) // num_neighbours_nodes_div,
+            num_iterations,
+            k_to_try[0],
+            lam_to_try[5]
+        )
+        solver.initialize()
+        solver.solve()
+        solver.visualize_solution()
+        solver.write_costs_overtime_to_csv()
+        solver.write_facility_placements_to_csv()
     return 0
 
 if __name__ == '__main__':

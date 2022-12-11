@@ -382,14 +382,23 @@ class GASolveFacilityProblem:
                     animation_points.pop(0)
                 #plt.show(block=False)
 
-    def write_results_to_csv(self):
+    def write_costs_overtime_to_csv(self):
         print("Saving solution progression to .csv file...")
-        save_path = Path("mut" + str(self.mutation_prob) + "_covr" + str(self.crossover_prob) + "_ga.csv")
+        save_path = Path("mut" + str(self.mutation_prob) + "_covr" + str(self.crossover_prob) + "_ga_progression.csv")
         with open(save_path, mode='w', encoding='utf-8') as solutionwriter:
             csvsolutionwriter = csv.writer(solutionwriter, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             csvsolutionwriter.writerow(["cost"])
             for state in self.states:
                 csvsolutionwriter.writerow([state])
+
+    def write_facility_placements_to_csv(self):
+        print("Saving final facility placements to .csv file...")
+        save_path = Path("mut" + str(self.mutation_prob) + "_covr" + str(self.crossover_prob) + "_ga_locations.csv")
+        with open(save_path, mode='w', encoding='utf-8') as solutionwriter:
+            csvsolutionwriter = csv.writer(solutionwriter, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csvsolutionwriter.writerow(["node_id", "x", "y"])
+            for facility in self.solution:
+                csvsolutionwriter.writerow([facility[2], facility[0], facility[1]])
 
 
 
@@ -440,8 +449,8 @@ facility_cost = 5000
 population_size = 8
 num_iterations = 100
 num_parents = 4
-mutation_prob = 0.5
-crossover_prob = 0.5
+mutation_prob = 0.9
+crossover_prob = 0.8
 facility_increase_prob = 0.7
 facility_decrease_prob = 0.7
 len_mutation_nodes_div = 10
@@ -467,6 +476,8 @@ def main():
     solver.init_population()
     solver.solve()
     solver.visualize_solution()
+    solver.write_costs_overtime_to_csv()
+    solver.write_facility_placements_to_csv()
     return 0
 
 if __name__ == '__main__':
