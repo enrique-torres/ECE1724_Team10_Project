@@ -37,11 +37,13 @@ class GASolveFacilityProblem:
         self.distance_from_downtown_matrix = None
         self.nodes_len_mutation = len_nodes_mutation # the number of closest nodes to be considered for the mutation
 
-        self.estimated_dtwn_x = 3988.871628130853
-        self.estimated_dtwn_y = -4525.6328839352145
+        self.estimated_dtwn_x = -13.599036766192057
+        self.estimated_dtwn_y = 80.27642386699426
         self.max_distance_to_dtwn = 0
         self.min_distance_to_dtwn = 0
-        self.min_bid_rent_multiplier = 0.5
+        self.min_bid_rent_multiplier = 0.7
+
+        self.overdemand_penalty = 100
 
         self.pop_size = population_size
         self.iterations = num_iterations
@@ -102,9 +104,11 @@ class GASolveFacilityProblem:
 
     def calculate_facility_cost(self, facility_closest_nodes):
         total_cost = 0
+        total_demand = 0
         for node in facility_closest_nodes:
             total_cost += node[1] * self.nodes_info[node[0]][2]  # add the distance from node to facility and back, which is already squared, times the demand for that node
-        return total_cost
+            total_demand += self.nodes_info[node[0]][2]
+        return total_cost if total_demand <= self.facility_capacity else total_cost * self.overdemand_penalty
         #return total_cost / len(facility_closest_nodes) + self.facility_cost
 
     def gen_random_solution(self):
@@ -172,16 +176,9 @@ class GASolveFacilityProblem:
         total_cost = 0
         facilities_closest_nodes = self.calculate_closest_nodes(solution)
         for i, closest_nodes in enumerate(facilities_closest_nodes):
-            try:
-                cost = self.calculate_facility_cost(closest_nodes)
-                bid_rent_multiplier = self.facility_placement_cost(self.solution[i][2])
-                total_cost += cost * bid_rent_multiplier
-            except Exception as ex:
-                print(ex)
-                print(self.solution)
-                print(self.solution[i])
-                print(self.solution[i][2])
-                exit(1)
+            cost = self.calculate_facility_cost(closest_nodes)
+            bid_rent_multiplier = self.facility_placement_cost(solution[i][2])
+            total_cost += cost * bid_rent_multiplier
         total_cost = total_cost * (len(solution) ** 2) # heavily penalize the number of facilities to minimize them
         return total_cost
 
