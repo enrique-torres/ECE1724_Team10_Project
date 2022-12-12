@@ -9,6 +9,7 @@ from copy import deepcopy
 from joblib import Parallel, delayed
 from matplotlib.patches import Polygon
 from matplotlib.animation import FuncAnimation, PillowWriter
+import time
 
 class GASolveFacilityProblem:
     def __init__(
@@ -251,6 +252,7 @@ class GASolveFacilityProblem:
         else:
             raise Exception("Population not initialized.")
         
+        start_time = time.time()
         for iter in range(self.iterations):
             print("Iteration ", str(iter))
             self.costs = self.fitness_all(self.population)
@@ -276,6 +278,7 @@ class GASolveFacilityProblem:
                     new_population.append(child)
             new_population.extend(parents)
             self.population = new_population
+        end_time = time.time()
         
         # Show best solution
         self.costs = self.fitness_all(self.population)
@@ -286,6 +289,7 @@ class GASolveFacilityProblem:
         self.solution_cost = self.costs[self.population.index(self.solution)]
         print("Best Solution:", self.solution)
         print("Best Solution Cost:", self.solution_cost)
+        print("Total time to complete: " + str(end_time - start_time) + " seconds")
 
     def visualize_solution(self):
         large = 32; med = 28; small = 24
@@ -302,7 +306,7 @@ class GASolveFacilityProblem:
         plt.figure(figsize=(16,8), dpi= 80)
         plt.ylabel("Y Coordinate of Node", fontsize=med)  
         plt.xlabel("X Coordinate of Node", fontsize=med) 
-        plt.title("Calculated Facilities Map - w/Clustered Nodes", fontsize=large)
+        plt.title("Calculated Delivery Centers Map - w/Clustered Nodes", fontsize=large)
         plt.xlim((self.min_x, self.max_x))
         plt.ylim((self.min_y, self.max_y))
 
@@ -367,7 +371,7 @@ class GASolveFacilityProblem:
         fig2 = plt.figure(figsize=(16,8), dpi= 80)
         plt.ylabel("Y Coordinate of Node", fontsize=med)  
         plt.xlabel("X Coordinate of Node", fontsize=med) 
-        plt.title("Progression of Facility Locations Over Time", fontsize=large)
+        plt.title("Progression of Delivery Center Locations Over Time", fontsize=large)
         plt.xlim((self.min_x, self.max_x))
         plt.ylim((self.min_y, self.max_y))
         animation_points = []

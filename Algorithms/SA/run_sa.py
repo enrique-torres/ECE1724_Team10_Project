@@ -9,6 +9,7 @@ from copy import deepcopy
 from joblib import Parallel, delayed
 from matplotlib.patches import Polygon
 from matplotlib.animation import FuncAnimation, PillowWriter
+import time
 
 class SASolveFacilityProblem:
     def __init__(
@@ -211,6 +212,8 @@ class SASolveFacilityProblem:
         self.states.append(self.solution_cost)
         self.states_full.append(self.solution)
         current = self.solution
+
+        start_time = time.time()
         for iter in range(self.num_iterations):
             print("Iteration ", str(iter))
             T = SASolveFacilityProblem.exponential_scheduling(self.k, self.lam, self.limit)(iter)
@@ -222,10 +225,13 @@ class SASolveFacilityProblem:
                 current = next_choice
             self.states.append(self.cost_function(current))
             self.states_full.append(current)
+        end_time = time.time()
+
         self.solution = current
         self.solution_cost = self.cost_function(current)
         print("Best Solution:", self.solution)
         print("Best Solution Cost:", self.solution_cost)
+        print("Total time to complete: " + str(end_time - start_time) + " seconds")
 
     def visualize_solution(self):
         large = 32; med = 28; small = 24
@@ -242,7 +248,7 @@ class SASolveFacilityProblem:
         plt.figure(figsize=(16,8), dpi= 80)
         plt.ylabel("Y Coordinate of Node", fontsize=med)  
         plt.xlabel("X Coordinate of Node", fontsize=med) 
-        plt.title("Calculated Facilities Map - w/Clustered Nodes", fontsize=large)
+        plt.title("Calculated Delivery Centers Map - w/Clustered Nodes", fontsize=large)
         plt.xlim((self.min_x, self.max_x))
         plt.ylim((self.min_y, self.max_y))
 
@@ -308,7 +314,7 @@ class SASolveFacilityProblem:
         fig2 = plt.figure(figsize=(16,8), dpi= 80)
         plt.ylabel("Y Coordinate of Node", fontsize=med)  
         plt.xlabel("X Coordinate of Node", fontsize=med) 
-        plt.title("Progression of Facility Locations Over Time", fontsize=large)
+        plt.title("Progression of Delivery Center Locations Over Time", fontsize=large)
         plt.xlim((self.min_x, self.max_x))
         plt.ylim((self.min_y, self.max_y))
         animation_points = []
