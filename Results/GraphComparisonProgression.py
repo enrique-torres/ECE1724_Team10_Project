@@ -25,6 +25,7 @@ def load_cost_progression(string_path):
 
 solution_sa = load_cost_progression("./average_10_runs_sa_progression.csv")
 solution_ga = load_cost_progression("./average_10_runs_ga_progression.csv")
+solution_adapt_ga = load_cost_progression("./average_10_runs_adapt_ga_progression.csv")
 
 large = 32; med = 28; small = 24
 params = {'axes.titlesize': large,
@@ -46,6 +47,7 @@ plt.xlabel("Iteration", fontsize=med)
 x = range(len(solution_ga))
 plt.plot(x, solution_sa, color="#8B2500", lw=2, label = "Simulated Annealing") 
 plt.plot(x, solution_ga, color="#3F5D7D", lw=2, label = "Genetic Algorithm") 
+plt.plot(x, solution_adapt_ga, color="#00E8FC", lw=2, label = "Adaptive Genetic Algorithm") 
 plt.legend(loc='center right', frameon=False)
-plt.savefig("ga_vs_sa_cost_progression.svg", format="svg")
+plt.savefig("sa_vs_ga_vs_adaptga_cost_progression.svg", format="svg")
 plt.show()
