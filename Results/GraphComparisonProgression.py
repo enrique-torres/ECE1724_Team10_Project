@@ -23,9 +23,19 @@ def load_cost_progression(string_path):
     print("Cost progression loaded! Found " + str(len(costs)) + " cost points.")
     return costs
 
+
 solution_sa = load_cost_progression("./average_10_runs_sa_progression.csv")
 solution_ga = load_cost_progression("./average_10_runs_ga_progression.csv")
 solution_adapt_ga = load_cost_progression("./average_10_runs_adapt_ga_progression.csv")
+
+max_cost_sa = max(solution_sa)
+max_cost_ga = max(solution_ga)
+max_cost_adapt_ga = max(solution_adapt_ga)
+max_cost = max(max_cost_sa, max(max_cost_ga, max_cost_adapt_ga))
+
+normalized_sa = [x / max_cost for x in solution_sa]
+normalized_ga = [x / max_cost for x in solution_ga]
+normalized_adapt_ga = [x / max_cost for x in solution_adapt_ga]
 
 large = 32; med = 28; small = 24
 params = {'axes.titlesize': large,
@@ -44,10 +54,10 @@ sns.set_style("white")
 plt.figure(figsize=(16,8), dpi= 80)
 plt.ylabel("Cost", fontsize=med)  
 plt.xlabel("Iteration", fontsize=med) 
-x = range(len(solution_ga))
-plt.plot(x, solution_sa, color="#8B2500", lw=2, label = "Simulated Annealing") 
-plt.plot(x, solution_ga, color="#3F5D7D", lw=2, label = "Genetic Algorithm") 
-plt.plot(x, solution_adapt_ga, color="#00E8FC", lw=2, label = "Adaptive Genetic Algorithm") 
+x = range(len(normalized_sa))
+plt.plot(x, normalized_sa, color="black", lw=2, marker='s', markersize=12, markevery=5, label = "Simulated Annealing") 
+plt.plot(x, normalized_ga, color="black", lw=2, marker='o', markersize=12, markevery=5, label = "Genetic Algorithm") 
+plt.plot(x, normalized_adapt_ga, color="black", lw=2, marker='^', markersize=12, markevery=5, label = "Adaptive Genetic Algorithm") 
 plt.legend(loc='center right', frameon=False)
 plt.savefig("sa_vs_ga_vs_adaptga_cost_progression.svg", format="svg")
 plt.show()
